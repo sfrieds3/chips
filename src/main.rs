@@ -1,3 +1,5 @@
+mod chips;
+
 use std::{
     fs::File,
     io::{BufReader, Read},
@@ -9,43 +11,46 @@ use std::{
 use minifb::Key;
 use structopt::StructOpt;
 
+use crate::chips::Chips;
+
 #[derive(Debug, StructOpt)]
 struct Params {
     input: PathBuf,
 
     #[structopt(default_value = "64")]
-    height: usize,
+    width: usize,
 
     #[structopt(default_value = "32")]
-    width: usize,
+    height: usize,
 }
 
 fn main() {
+    let mut chips = Chips::default();
     let params = Params::from_args();
+    let mut buffer = vec![255; params.width * params.height];
     println!("{params:?}");
-    let mut buffer = vec![0; params.width * params.height];
     let mut window = minifb::Window::new(
         "CHIPS",
         params.width,
         params.height,
         minifb::WindowOptions {
-            scale: minifb::Scale::X32,
+            scale: minifb::Scale::X16,
             ..Default::default()
         },
     )
     .unwrap();
     window.set_target_fps(60);
 
-    let _bin: Vec<_> = BufReader::new(File::open(params.input).unwrap())
+    let bin: Vec<_> = BufReader::new(File::open(params.input).unwrap())
         .bytes()
         .collect::<Result<_, _>>()
         .unwrap();
 
-    while window.is_open() && !window.is_key_down(Key::Escape) {
-        for i in buffer.iter_mut() {
-            *i = 0;
-        }
+    chips.load_bin(&bin);
 
+    buffer = chips.memory_as_pixels(params.width, params.height);
+
+    while window.is_open() && !window.is_key_down(Key::Escape) {
         window.set_title("CHIPS");
         window
             .update_with_buffer(&buffer, params.width, params.height)
